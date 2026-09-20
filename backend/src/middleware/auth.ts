@@ -4,6 +4,8 @@ import { User } from "../models/User";
 import { requireAuth } from "@clerk/express";
 
 
+
+
 export type AuthRequest = Request & {
  userId?: string;
 };
