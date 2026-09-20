@@ -5,9 +5,6 @@ import { Message } from "../models/Message";
 import { Chat } from "../models/Chat";
 import { User } from "../models/User";
 
-interface SocketWithUserId extends Socket {
-  userId: string;
-}
 // store online users in memory  userId -> socketId
 export const onlineUsers: Map<string, string> = new Map();
 
@@ -15,8 +12,8 @@ export const initializeSocket = (httpServer: HttpServer) => {
   const allowedOrigins = [
     "https://localhost:8081", // Expo Mobie
     "https://localhost:5173", // Vite Web dev
-    process.env.FRONTEND_URL as string,
-  ];
+    process.env.FRONTEND_URL,
+  ].filter(Boolean) as string[];
 
   const io = new SocketServer(httpServer, { cors: { origin: allowedOrigins } });
 
@@ -36,7 +33,7 @@ export const initializeSocket = (httpServer: HttpServer) => {
       const user = await User.findOne({ clerkId });
       if (!user) return next(new Error("User no found "));
 
-      (socket as SocketWithUserId).userId = user._id.toString();
+      socket.data.userId = user._id.toString();
 
       next();
     } catch (error: any) {
@@ -47,7 +44,7 @@ export const initializeSocket = (httpServer: HttpServer) => {
   // this "connecion" event name is special and should be wrien like his
   // it's the even that is triggered when a new client connect to the server
   io.on("connecion", (socket) => {
-    const userId = (socket as SocketWithUserId).userId;
+    const userId = socket.data.userId;
 
     // send list of currently online users o he newly conneced client
     socket.emit("online-users", { userId: Array.from(onlineUsers.keys()) });
@@ -95,7 +92,7 @@ export const initializeSocket = (httpServer: HttpServer) => {
           chat.lastMessageAt = new Date();
           await chat.save();
 
-          await message.populate("sender", "name email avatar");
+          await message.populate("sender", "name avatar");
 
           io.to(`chat:${chatId}`).emit("new-message", message);
 
